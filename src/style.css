@@ -1,0 +1,144 @@
+/* Layout widths here are mirrored by the `sizes` attributes in scripts/render.js. */
+:root {
+  --pad: clamp(20px, 4vw, 56px);
+  --ink: #111;
+  --muted: #6e6e6e;
+  --placeholder: #f1f0ee;
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+
+html { -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0;
+  background: #fff;
+  color: var(--ink);
+  font: 15px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+a { color: inherit; text-decoration: none; }
+:focus-visible { outline: 2px solid var(--ink); outline-offset: 4px; }
+ul, ol { list-style: none; margin: 0; padding: 0; }
+img { display: block; max-width: 100%; height: auto; background: var(--placeholder); }
+
+.site-header, main {
+  max-width: calc(1440px + 2 * var(--pad));
+  margin: 0 auto;
+  padding-inline: var(--pad);
+}
+.site-header { padding-block: var(--pad) calc(var(--pad) * 1.25); }
+main { padding-bottom: calc(var(--pad) * 2.5); }
+
+.wordmark { margin: 0; font-size: 15px; font-weight: 500; letter-spacing: 0.01em; }
+
+/* Homepage */
+.albums {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: calc(var(--pad) * 1.25) var(--pad);
+}
+@media (max-width: 640px) { .albums { grid-template-columns: 1fr; } }
+
+.album-link { display: block; }
+.cover { display: block; aspect-ratio: 3 / 2; overflow: hidden; background: var(--placeholder); }
+.cover img { width: 100%; height: 100%; object-fit: cover; transition: opacity 200ms ease; }
+.album-link:hover .cover img { opacity: 0.9; }
+.album-name { display: block; margin-top: 0.7em; }
+
+/* Album */
+.back { display: inline-block; font-size: 14px; color: var(--muted); padding-block: 4px; }
+.back:hover { color: var(--ink); }
+.album-title { margin: 0.6em 0 0; font-size: clamp(22px, 2.6vw, 30px); font-weight: 500; letter-spacing: -0.005em; line-height: 1.2; }
+.note { margin: 0.5em 0 0; font-size: 14px; color: var(--muted); }
+
+.photos {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: clamp(48px, 9vw, 112px);
+}
+.photos li { width: 100%; display: flex; justify-content: center; }
+/* Each photo fits the column and 88% of the viewport height, at its own aspect ratio. */
+.photo { display: block; width: min(100%, 1280px, calc(88svh * var(--ar))); cursor: zoom-in; }
+.photo img { width: 100%; }
+
+/* Viewer */
+html:has(.viewer[open]) { overflow: hidden; }
+.viewer {
+  --vx: 76px;
+  --vy: 60px;
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  max-width: none;
+  max-height: none;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: #fff;
+  color: var(--ink);
+  overscroll-behavior: contain;
+}
+.viewer::backdrop { background: #fff; }
+.viewer-img {
+  position: absolute;
+  top: var(--vy);
+  left: var(--vx);
+  width: calc(100% - 2 * var(--vx));
+  height: calc(100% - 2 * var(--vy));
+  object-fit: contain;
+  background: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+.viewer-count {
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  translate: -50% 0;
+  margin: 0;
+  line-height: var(--vy);
+  font-size: 13px;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+.viewer-btn {
+  position: absolute;
+  display: grid;
+  place-items: center;
+  width: 52px;
+  height: 52px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: none;
+  color: var(--ink);
+  opacity: 0.55;
+  cursor: pointer;
+  transition: opacity 150ms ease;
+  -webkit-tap-highlight-color: transparent;
+}
+.viewer-btn:hover, .viewer-btn:focus-visible { opacity: 1; }
+.viewer-btn:focus-visible { outline-offset: -4px; }
+.viewer-btn svg { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
+.viewer-close { top: 4px; right: 12px; }
+.viewer-prev, .viewer-next { top: 50%; translate: 0 -50%; }
+.viewer-prev { left: 12px; }
+.viewer-next { right: 12px; }
+
+/* Phones: image uses the full width; arrows move to the bottom row beside the counter. */
+@media (max-width: 700px) {
+  .viewer { --vx: 0px; --vy: 60px; }
+  .viewer-prev, .viewer-next { top: auto; bottom: 4px; translate: none; }
+  .viewer-prev { left: 8px; }
+  .viewer-next { right: 8px; }
+  .viewer-close { right: 8px; }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .viewer[open] { animation: fade-in 160ms ease-out; }
+  @view-transition { navigation: auto; }
+  ::view-transition-group(root) { animation-duration: 180ms; }
+}
+@keyframes fade-in { from { opacity: 0; } }

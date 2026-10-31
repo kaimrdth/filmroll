@@ -17,13 +17,19 @@ const MANIFEST = path.join(ROOT, 'src', 'manifest.json');
 // 1200 suits phones (about 1050 px needed at 3x) and portrait photos on 2x laptops.
 const WIDTHS = [480, 960, 1200, 1600, 2400];
 const WEBP = { quality: 82, effort: 5, smartSubsample: true };
+// The two largest sizes are mostly seen on high-density screens, where each image pixel
+// is small, so they use a lower quality. This saves about 20% on the largest files.
+const QUALITY_BY_WIDTH = { 1600: 78, 2400: 78 };
 // The blurred preview that is inlined in the HTML: 20 px on the long edge.
 const LQIP = { size: 20, webp: { quality: 50, effort: 6 } };
 const LQIP_ID = JSON.stringify(LQIP);
 const SOURCE_EXT = new Set(['.jpg', '.jpeg', '.png', '.tif', '.tiff', '.webp']);
-// Part of every derivative name, so changing the encoding settings regenerates everything.
-// Adding or removing a width only creates or removes the files for that width.
-const SETTINGS = createHash('sha1').update(JSON.stringify({ WEBP, v: 2 })).digest('hex');
+// The settings for each width are part of that width's filename, so changing them
+// regenerates only the files they apply to. Adding or removing a width only creates
+// or removes the files for that width.
+const webpFor = (w) => ({ ...WEBP, quality: QUALITY_BY_WIDTH[w] ?? WEBP.quality });
+const settingsId = (webp) => createHash('sha1').update(JSON.stringify({ WEBP: webp, v: 2 })).digest('hex');
+const SETTINGS = settingsId(WEBP);
 
 const naturalSort = (a, b) => a.localeCompare(b, 'en', { numeric: true, sensitivity: 'base' });
 const titleFromSlug = (slug) => slug.split(/[-_ ]+/).map((w) => w[0].toUpperCase() + w.slice(1)).join(' ');
@@ -41,6 +47,7 @@ const widthsFor = (width) => [...new Set(WIDTHS.map((w) => Math.min(w, width)))]
 
 async function processImage({ album, name, input, hash, prev }) {
   const key = sha1(hash + SETTINGS).slice(0, 10);
+  const keyFor = (w) => sha1(hash + settingsId(webpFor(w))).slice(0, 10);
   const base = name.toLowerCase().replace(/\.[^.]+$/, '').replace(/[^a-z0-9_-]+/g, '-');
   const meta = await sharp(input).metadata();
   // Orientations 5-8 swap width and height.
@@ -52,14 +59,14 @@ async function processImage({ album, name, input, hash, prev }) {
   let created = 0;
   for (const w of widthsFor(width)) {
     const h = Math.round((height * w) / width);
-    const rel = `img/${album}/${base}.${key}-${w}.webp`;
+    const rel = `img/${album}/${base}.${keyFor(w)}-${w}.webp`;
     const file = path.join(ROOT, 'public', rel);
     if (!existsSync(file)) {
       await sharp(input)
         .autoOrient()                 // apply EXIF orientation
         .resize({ width: w, height: h, fit: 'fill', kernel: 'lanczos3' })
         .withIccProfile('srgb')       // convert from the embedded profile (e.g. Display P3) and tag as sRGB
-        .webp(WEBP)
+        .webp(webpFor(w))
         .toFile(file);
       created++;
     }

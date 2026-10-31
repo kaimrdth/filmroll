@@ -1,5 +1,5 @@
 {
-  "generated": "2026-10-31T09:38:25.589Z",
+  "generated": "2026-10-31T09:50:15.266Z",
   "albums": [
     {
       "slug": "hong-kong",
@@ -3064,7 +3064,7 @@
           "lqipId": "{\"size\":20,\"webp\":{\"quality\":50,\"effort\":6}}"
         }
       ],
-      "coverPosition": "50% 80%"
+      "coverPosition": "50% 10%"
     }
   ]
 }

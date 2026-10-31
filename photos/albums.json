@@ -2,5 +2,5 @@
   "hong-kong": { "title": "Hong Kong", "cover": "IMG_3542.JPG" },
   "tokyo": { "title": "Tokyo", "cover": "IMG_3470.JPG" },
   "nikko": { "title": "Nikko", "cover": "IMG_3494.JPG" },
-  "tochigi": { "title": "Tochigi", "cover": "IMG_3429.JPG", "coverPosition": "50% 80%" }
+  "tochigi": { "title": "Tochigi", "cover": "IMG_3429.JPG", "coverPosition": "50% 10%" }
 }

@@ -3,6 +3,19 @@ import './style.css';
 const dialog = document.querySelector('.viewer');
 if (dialog) initViewer(dialog);
 
+// Homepage: when a pointer rests on an album (or a finger touches it), start loading
+// that album's first photo, so it is ready when the album page opens.
+for (const link of document.querySelectorAll('[data-warm-srcset]')) {
+  const warm = () => {
+    const img = new Image();
+    img.sizes = link.dataset.warmSizes;
+    img.srcset = link.dataset.warmSrcset;
+  };
+  link.addEventListener('pointerenter', warm, { once: true });
+  link.addEventListener('touchstart', warm, { once: true, passive: true });
+  link.addEventListener('focus', warm, { once: true });
+}
+
 function initViewer(dialog) {
   const view = dialog.querySelector('.viewer-img');
   const count = dialog.querySelector('.viewer-count');
@@ -44,6 +57,7 @@ function initViewer(dialog) {
   };
 
   const display = (photo, source) => {
+    view.style.backgroundImage = photo.img.style.backgroundImage;
     view.src = source.url;
     view.alt = photo.img.alt;
     shown = source;
@@ -92,6 +106,7 @@ function initViewer(dialog) {
   // On close, return to the photo that was last on screen.
   dialog.addEventListener('close', () => {
     view.removeAttribute('src');
+    view.style.backgroundImage = '';
     const link = links[index];
     const rect = link.getBoundingClientRect();
     if (rect.bottom < 0 || rect.top > innerHeight) link.scrollIntoView({ block: 'center' });

@@ -48,13 +48,22 @@ The site skips album folders that have no photos.
 - reads the source file and does not change it;
 - applies the EXIF orientation;
 - converts from the embedded color profile (for example Display P3) to sRGB, and tags the output as sRGB;
-- writes WebP copies (quality 82) at 480, 960, 1600 and 2400 pixels wide, capped at the original width, to `public/img/<album>/`;
+- writes WebP copies (quality 82) at 480, 960, 1200, 1600 and 2400 pixels wide, capped at the original width, to `public/img/<album>/`;
 - removes all other metadata (EXIF, GPS);
-- writes `src/manifest.json` with the albums, photo dimensions and derivative paths.
+- makes a tiny preview (20 pixels on the long edge, about 200 bytes);
+- writes `src/manifest.json` with the albums, photo dimensions, derivative paths and previews.
 
 Each derivative name contains a hash of the source file and the settings. If a source file does not change, the script reuses its derivatives. If you change or delete a source file, the script makes new derivatives and deletes the old ones.
 
 `photos/` is outside `public/`, so the original scans are never part of the deployed site.
+
+## How the images load fast
+
+- Each page contains a blurred preview of every photo (an inlined SVG blur of the tiny preview). The previews show with the first paint, before any image downloads.
+- The browser selects the smallest WebP copy that is sharp on the screen (`srcset` and `sizes`). The first photo on a page loads with high priority; the others load as they come near the screen.
+- The stylesheet is inlined in each page, so the first paint does not wait for a second request.
+- On the homepage, when a pointer rests on an album or a finger touches it, the album's first photo starts to load. Chromium browsers also prefetch the album pages and fully render a page in advance when a pointer rests on its link (speculation rules in `index.html`).
+- The viewer shows the photo that is already loaded, loads a copy that suits the screen, and prefetches the two neighboring photos.
 
 ## Production build
 

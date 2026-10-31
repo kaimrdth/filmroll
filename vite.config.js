@@ -33,7 +33,13 @@ function filmrollPages() {
     },
 
     generateBundle(_, bundle) {
-      const template = bundle['index.html'].source;
+      // Inline the small stylesheet, so the first paint does not wait for a second request.
+      let template = bundle['index.html'].source;
+      for (const [file, asset] of Object.entries(bundle)) {
+        if (!file.endsWith('.css')) continue;
+        template = template.replace(new RegExp(`<link rel="stylesheet"[^>]*href="${base}${file}">`), `<style>${asset.source}</style>`);
+        delete bundle[file];
+      }
       const manifest = loadManifest();
       bundle['index.html'].source = fill(template, renderHome(manifest, base));
       for (const album of manifest.albums) {

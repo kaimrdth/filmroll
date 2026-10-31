@@ -7,6 +7,13 @@
   <title><!--title--></title>
   <link rel="icon" href="data:,">
   <script type="module" src="/src/main.js"></script>
+  <!-- Chromium browsers: fetch album pages early, and fully render a page when a pointer rests on its link. -->
+  <script type="speculationrules">
+    {
+      "prefetch": [{ "where": { "selector_matches": ".album-link" }, "eagerness": "eager" }],
+      "prerender": [{ "where": { "and": [{ "href_matches": "/*" }, { "not": { "selector_matches": ".photo" } }] }, "eagerness": "moderate" }]
+    }
+  </script>
 </head>
 <body><!--body-->
 </body>

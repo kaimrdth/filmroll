@@ -19,7 +19,13 @@ body {
 a { color: inherit; text-decoration: none; }
 :focus-visible { outline: 2px solid var(--ink); outline-offset: 4px; }
 ul, ol { list-style: none; margin: 0; padding: 0; }
-img { display: block; max-width: 100%; height: auto; background: var(--placeholder); }
+/* Images carry an inlined blurred preview (scripts/render.js) that shows until they load. */
+img {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  background: var(--placeholder) center / cover no-repeat;
+}
 
 .site-header, main {
   max-width: calc(1440px + 2 * var(--pad));
@@ -87,7 +93,7 @@ html:has(.viewer[open]) { overflow: hidden; }
   width: calc(100% - 2 * var(--vx));
   height: calc(100% - 2 * var(--vy));
   object-fit: contain;
-  background: none;
+  background: center / contain no-repeat; /* the photo's blurred preview, set by src/main.js */
   user-select: none;
   -webkit-user-select: none;
 }

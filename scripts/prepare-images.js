@@ -125,6 +125,8 @@ async function run() {
     }));
 
     const album = { slug, title, cover: 0, photos: [] };
+    // Optional crop of the cover in its 3:2 frame, as a CSS object-position (e.g. "50% 80%").
+    if (info.coverPosition) album.coverPosition = String(info.coverPosition);
     items.forEach((item, i) => {
       const alt = info.alt?.[item.name] ?? `${title}, photo ${i + 1} of ${items.length}`;
       album.photos[i] = { file: item.name, alt, source: item.source };
@@ -152,6 +154,7 @@ async function run() {
   for (const { album, coverName } of albums) {
     // Cover: the file named in albums.json, else the first landscape photo, else the first photo.
     const named = album.photos.findIndex((p) => p.file === coverName);
+    if (coverName && named < 0) console.warn(`images: cover ${coverName} not found in photos/${album.slug}/`);
     const landscape = album.photos.findIndex((p) => p.width > p.height);
     album.cover = named >= 0 ? named : Math.max(0, landscape);
     for (const p of album.photos) delete p.created;

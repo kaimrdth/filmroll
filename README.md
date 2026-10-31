@@ -29,16 +29,17 @@ The site skips album folders that have no photos.
 {
   "hong-kong": {
     "title": "Hong Kong",
-    "cover": "IMG_3528.JPG",
+    "cover": "IMG_3542.JPG",
     "alt": { "IMG_3525.JPG": "Tram crossing a street at dusk" }
   },
-  "tokyo": { "title": "Tokyo" }
+  "tochigi": { "title": "Tochigi", "cover": "IMG_3429.JPG", "coverPosition": "50% 80%" }
 }
 ```
 
 - The order of the albums in this file is the order on the homepage. Albums not in the file come after, in alphabetical order.
 - `title`: the place name. If you omit it, the title comes from the folder name (`hong-kong` becomes "Hong Kong").
 - `cover`: the cover photo. If you omit it, the cover is the first landscape photo in the album. Covers show in a 3:2 frame.
+- `coverPosition`: which part of the cover shows in the 3:2 frame, as a CSS `object-position` (horizontal, then vertical). Use it for portrait covers: `"50% 80%"` shows the part 80% of the way down. If you omit it, the frame shows the center.
 - `alt`: alt text for each photo, by filename. If you omit it, the alt text is "Tokyo, photo 3 of 32".
 
 ## Image preparation

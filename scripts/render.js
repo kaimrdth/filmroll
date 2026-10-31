@@ -7,7 +7,15 @@ const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&
 // Covers: one column up to 640px, two columns above, 1440px max container.
 const COVER_SIZES = '(max-width: 640px) calc(100vw - 40px), (max-width: 1400px) 44vw, (max-width: 1552px) calc(50vw - 84px), 692px';
 // Album photos: the column is 1280px max and each photo is at most 88% of the viewport height.
-const photoSizes = (p) => `(max-width: 640px) calc(100vw - 40px), min(1280px, 92vw, calc(88vh * ${(p.width / p.height).toFixed(3)}))`;
+// On desktop screens of 2x density or more, the column requests a copy for about 1.3x density
+// (65% of the layout width), which halves the data of an album scroll. The viewer still loads
+// a copy that is sharp at full density.
+const photoSizes = (p) => {
+  const ar = p.width / p.height;
+  return '(max-width: 640px) calc(100vw - 40px), '
+    + `(min-resolution: 2dppx) min(832px, 59.8vw, calc(${(57.2 * ar).toFixed(2)}vh)), `
+    + `min(1280px, 92vw, calc(${(88 * ar).toFixed(2)}vh))`;
+};
 
 // The inlined preview, blurred by an SVG filter. The image is drawn larger than the
 // frame so that the blur does not fade to transparent at the edges.
@@ -21,11 +29,11 @@ export function blurredPreview(p) {
 
 const srcset = (p, base) => p.sources.map((s) => `${base}${s.src} ${s.w}w`).join(', ');
 
-function img(p, base, { sizes, eager = false, cls = '' }) {
+function img(p, base, { sizes, eager = false, auto = true, cls = '' }) {
   const fallback = p.sources.find((s) => s.w >= 960) ?? p.sources.at(-1);
   // Lazy images may use sizes="auto": the browser then uses the real layout width.
   return `<img${cls ? ` class="${cls}"` : ''} src="${base}${fallback.src}" srcset="${srcset(p, base)}" `
-    + `sizes="${eager ? sizes : `auto, ${sizes}`}" width="${p.width}" height="${p.height}" alt="${esc(p.alt)}" `
+    + `sizes="${eager || !auto ? sizes : `auto, ${sizes}`}" width="${p.width}" height="${p.height}" alt="${esc(p.alt)}" `
     + `decoding="async" ${eager ? 'fetchpriority="high"' : 'loading="lazy"'} style="background-image:url(&quot;${blurredPreview(p)}&quot;)">`;
 }
 
@@ -55,7 +63,7 @@ export function renderAlbum(album, base) {
     return `
       <li>
         <a class="photo" href="${base}${largest.src}" aria-label="Open photo ${i + 1} of ${n}" style="--ar: ${(p.width / p.height).toFixed(4)}">
-          ${img(p, base, { sizes: photoSizes(p), eager: i === 0 })}
+          ${img(p, base, { sizes: photoSizes(p), eager: i === 0, auto: false })}
         </a>
       </li>`;
   }).join('');

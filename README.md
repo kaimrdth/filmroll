@@ -21,7 +21,7 @@ The first image preparation takes a few minutes, because every scan is decoded. 
 2. Put the scans in the folder (`.jpg`, `.jpeg`, `.png`, `.tif`, `.tiff` or `.webp`). Photos show in filename order (`IMG_2.jpg` comes before `IMG_10.jpg`).
 3. Run `npm run images`, or restart `npm run dev`.
 
-An empty album folder shows labeled placeholder images until you add photos (`photos/seoul/` is empty now).
+The site skips album folders that have no photos.
 
 ### Optional metadata: `photos/albums.json`
 
@@ -63,17 +63,32 @@ npm run build      # prepares images, then writes the static site to dist/
 npm run preview    # serves dist/ at http://localhost:4173 to check it
 ```
 
-## Deploy
+## Deploy to Netlify
 
-`dist/` is a complete static site. Upload it to any static host, for example Netlify, Cloudflare Pages, GitHub Pages, or an S3 bucket. No server configuration is necessary, because each album is a real `<album>/index.html` file.
+The repo does not contain the source scans. It contains the WebP copies (`public/img/`) and `src/manifest.json`, which `npm run images` makes on your computer. Netlify builds only the HTML pages (`npm run build:site`), so it does not need the scans. `netlify.toml` holds the build settings and the cache headers.
+
+To set up the site one time, import the `kaimrdth/filmroll` repo from GitHub in Netlify. Keep the settings that Netlify reads from `netlify.toml`.
+
+To publish new or changed photos:
+
+```sh
+npm run images
+git add photos/albums.json public/img src/manifest.json
+git commit -m "Add new photos"
+git push
+```
+
+Netlify deploys each push to `main`.
+
+### Other static hosts
+
+`npm run build` writes a complete static site to `dist/`. Upload `dist/` to any static host. Each album is a real `<album>/index.html` file, so the host needs no special configuration.
 
 If the site is not at the root of its domain (for example `https://example.com/filmroll/`), set the base path when you build:
 
 ```sh
 BASE_PATH=/filmroll/ npm run build
 ```
-
-The derivative filenames change when their content changes, so the host can cache `/img/` and `/assets/` for a long time.
 
 ## Files
 
@@ -85,4 +100,5 @@ scripts/render.js        HTML for the homepage and the album pages
 src/main.js              the photo viewer (the only client-side JavaScript)
 src/style.css            all styles
 vite.config.js           makes one static page per album
+netlify.toml             Netlify build settings and cache headers
 ```

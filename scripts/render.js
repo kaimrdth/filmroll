@@ -54,7 +54,6 @@ export function renderAlbum(album, base) {
   <header class="site-header">
     <a class="back" href="${base}"><span aria-hidden="true">←</span> filmroll</a>
     <h1 class="album-title">${esc(album.title)}</h1>
-    ${album.placeholder ? '<p class="note">Placeholder images. Add photos to this album’s folder to replace them.</p>' : ''}
   </header>
   <main>
     <ol class="photos">${photos}
@@ -73,5 +72,16 @@ export function renderAlbum(album, base) {
       <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg>
     </button>
   </dialog>`,
+  };
+}
+
+export function renderNotFound(base) {
+  return {
+    title: 'Not found · filmroll',
+    body: `
+  <header class="site-header">
+    <a class="back" href="${base}"><span aria-hidden="true">←</span> filmroll</a>
+    <h1 class="album-title">Page not found</h1>
+  </header>`,
   };
 }

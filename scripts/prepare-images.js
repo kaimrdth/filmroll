@@ -4,7 +4,7 @@
 
 import { createHash } from 'node:crypto';
 import { existsSync } from 'node:fs';
-import { mkdir, readdir, readFile, stat, unlink, writeFile } from 'node:fs/promises';
+import { mkdir, readdir, readFile, rm, stat, unlink, writeFile } from 'node:fs/promises';
 import { availableParallelism } from 'node:os';
 import path from 'node:path';
 import sharp from 'sharp';
@@ -63,21 +63,6 @@ async function processImage({ album, name, input, hash }) {
   return { width, height, sources, created };
 }
 
-// Clearly labeled stand-ins for an album folder that has no photos yet.
-function placeholders(title) {
-  const shapes = [[3000, 2000], [2000, 3000], [3000, 2000], [3000, 2000]];
-  return shapes.map(([w, h], i) => {
-    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}">
-      <rect width="100%" height="100%" fill="#e9e8e4"/>
-      <rect x="40" y="40" width="${w - 80}" height="${h - 80}" fill="none" stroke="#c9c7c0" stroke-width="6" stroke-dasharray="30 20"/>
-      <g font-family="Helvetica, Arial, sans-serif" fill="#8a877f" text-anchor="middle">
-        <text x="50%" y="46%" font-size="${w / 14}" letter-spacing="${w / 120}">PLACEHOLDER</text>
-        <text x="50%" y="56%" font-size="${w / 28}">${title} · ${i + 1} of ${shapes.length} · ${w > h ? 'landscape' : 'portrait'}</text>
-      </g></svg>`;
-    return { name: `placeholder-${i + 1}.svg`, input: Buffer.from(svg), hash: sha1(svg) };
-  });
-}
-
 async function run() {
   const started = Date.now();
   const meta = await readJSON(path.join(PHOTOS, 'albums.json'), {});
@@ -99,32 +84,31 @@ async function run() {
       .filter((f) => !f.startsWith('.') && SOURCE_EXT.has(path.extname(f).toLowerCase()))
       .sort(naturalSort);
 
-    let items;
-    if (files.length) {
-      items = await Promise.all(files.map(async (file) => {
-        const input = path.join(PHOTOS, slug, file);
-        const { size, mtimeMs } = await stat(input);
-        const prev = known.get(`${slug}/${file}`);
-        // Hash only files whose size or modification time changed.
-        const hash = prev && prev.size === size && prev.mtimeMs === mtimeMs
-          ? prev.hash : sha1(await readFile(input));
-        return { name: file, input, hash, source: { size, mtimeMs, hash } };
-      }));
-    } else {
-      items = placeholders(title);
+    if (!files.length) {
+      console.log(`images: skipped photos/${slug}/ (no photos)`);
+      continue;
     }
+    const items = await Promise.all(files.map(async (file) => {
+      const input = path.join(PHOTOS, slug, file);
+      const { size, mtimeMs } = await stat(input);
+      const prev = known.get(`${slug}/${file}`);
+      // Hash only files whose size or modification time changed.
+      const hash = prev && prev.size === size && prev.mtimeMs === mtimeMs
+        ? prev.hash : sha1(await readFile(input));
+      return { name: file, input, hash, source: { size, mtimeMs, hash } };
+    }));
 
-    const album = { slug, title, placeholder: !files.length, cover: 0, photos: [] };
+    const album = { slug, title, cover: 0, photos: [] };
     items.forEach((item, i) => {
-      const alt = info.alt?.[item.name]
-        ?? (album.placeholder ? `Placeholder image ${i + 1} for ${title}` : `${title}, photo ${i + 1} of ${items.length}`);
+      const alt = info.alt?.[item.name] ?? `${title}, photo ${i + 1} of ${items.length}`;
       album.photos[i] = { file: item.name, alt, source: item.source };
       jobs.push(async () => Object.assign(album.photos[i], await processImage({ album: slug, ...item })));
     });
     albums.push({ album, coverName: info.cover });
   }
 
-  await Promise.all(slugs.map((slug) => mkdir(path.join(OUT, slug), { recursive: true })));
+  if (!albums.length) throw new Error('No photos found. Add photos to photos/<album>/ and run again.');
+  await Promise.all(albums.map(({ album }) => mkdir(path.join(OUT, album.slug), { recursive: true })));
 
   // Process a few images at a time; each one decodes a large scan.
   let next = 0, created = 0, done = 0;
@@ -149,11 +133,17 @@ async function run() {
   const manifest = { generated: new Date().toISOString(), albums: albums.map((a) => a.album) };
   await writeFile(MANIFEST, JSON.stringify(manifest, null, 2) + '\n');
 
-  // Remove derivatives that no photo uses any more.
+  // Remove derivatives that no photo uses any more, and folders of albums that are gone.
   const used = new Set(manifest.albums.flatMap((a) => a.photos.flatMap((p) => p.sources.map((s) => s.src))));
+  const current = new Set(manifest.albums.map((a) => a.slug));
   let removed = 0;
   for (const dir of await readdir(OUT, { withFileTypes: true })) {
     if (!dir.isDirectory()) continue;
+    if (!current.has(dir.name)) {
+      removed += (await readdir(path.join(OUT, dir.name))).length;
+      await rm(path.join(OUT, dir.name), { recursive: true, force: true });
+      continue;
+    }
     for (const f of await readdir(path.join(OUT, dir.name))) {
       if (!used.has(`img/${dir.name}/${f}`)) { await unlink(path.join(OUT, dir.name, f)); removed++; }
     }

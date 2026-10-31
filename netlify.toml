@@ -1,0 +1,20 @@
+# Netlify builds the pages only. The WebP copies in public/img/ are made
+# on your computer with `npm run images` and committed to the repo.
+[build]
+  command = "npm run build:site"
+  publish = "dist"
+
+[build.environment]
+  NODE_VERSION = "22"
+
+# Image and asset filenames change when their content changes,
+# so browsers can keep them for a year.
+[[headers]]
+  for = "/img/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+[[headers]]
+  for = "/assets/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"

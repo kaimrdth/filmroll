@@ -6,6 +6,7 @@
     "images": "node scripts/prepare-images.js",
     "dev": "npm run images && vite",
     "build": "npm run images && vite build",
+    "build:site": "vite build",
     "preview": "vite preview"
   },
   "devDependencies": {

@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { defineConfig } from 'vite';
-import { renderAlbum, renderHome } from './scripts/render.js';
+import { renderAlbum, renderHome, renderNotFound } from './scripts/render.js';
 
 const manifestFile = new URL('./src/manifest.json', import.meta.url);
 const loadManifest = () => JSON.parse(readFileSync(manifestFile, 'utf8'));
@@ -39,6 +39,8 @@ function filmrollPages() {
       for (const album of manifest.albums) {
         this.emitFile({ type: 'asset', fileName: `${album.slug}/index.html`, source: fill(template, renderAlbum(album, base)) });
       }
+      // Netlify and most static hosts serve 404.html for unknown URLs.
+      this.emitFile({ type: 'asset', fileName: '404.html', source: fill(template, renderNotFound(base)) });
     },
   };
 }

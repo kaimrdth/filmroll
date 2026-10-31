@@ -76,16 +76,23 @@ main { padding-bottom: calc(var(--pad) * 2.5); }
 .back:hover { color: var(--ink); }
 .album-title { margin: 0; font-size: 17px; font-weight: 500; line-height: 1.3; }
 
-/* Each photo has its own viewport-height section and is scaled to fit it, edge to edge.
+/* Each photo has its own section, as tall as the photo is shown: it fits the viewport
+   width and height (object-fit: contain), so on a phone a landscape photo gets a short
+   section, and on a desktop each photo fills the screen height. A thin gap separates photos.
    svh is the viewport height with mobile browser toolbars shown, so a section never hides
    under a toolbar and does not change size when toolbars show or hide. */
 :root:has(.photos) { scroll-snap-type: y proximity; }
+/* Touch screens: src/main.js settles each swipe instead (see there). */
+:root.touch-settle:has(.photos) { scroll-snap-type: none; }
 main.album { max-width: none; padding: 0; }
+.photos { display: grid; row-gap: 6px; }
 .photos li {
-  height: 100vh;
-  height: 100svh;
+  height: min(100vh, calc(100vw / var(--ar)));
+  height: min(100svh, calc(100vw / var(--ar)));
   scroll-snap-align: center;
 }
+/* Room after the last photo, so that it can also come to rest in the middle of the screen. */
+.photos li:last-child { margin-bottom: calc((100svh - min(100svh, 100vw / var(--ar))) / 2); }
 .photo { display: block; height: 100%; cursor: zoom-in; }
 .photo:focus-visible { outline-offset: -6px; }
 .photo img {

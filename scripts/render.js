@@ -70,7 +70,7 @@ export function renderAlbum(album, base) {
   const photos = album.photos.map((p, i) => {
     const largest = p.sources.at(-1);
     return `
-      <li>
+      <li style="--ar: ${(p.width / p.height).toFixed(4)}">
         <a class="photo" href="${base}${largest.src}" aria-label="Open photo ${i + 1} of ${n}">
           ${img(p, base, { sizes: photoSizes(p), eager: i === 0, auto: false })}
         </a>

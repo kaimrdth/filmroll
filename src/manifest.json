@@ -1,10 +1,10 @@
 {
-  "generated": "2026-10-31T09:23:44.291Z",
+  "generated": "2026-10-31T09:38:25.589Z",
   "albums": [
     {
       "slug": "hong-kong",
       "title": "Hong Kong",
-      "cover": 0,
+      "cover": 4,
       "photos": [
         {
           "file": "IMG_3525.JPG",
@@ -701,7 +701,7 @@
     {
       "slug": "tokyo",
       "title": "Tokyo",
-      "cover": 1,
+      "cover": 25,
       "photos": [
         {
           "file": "IMG_3378.JPG",
@@ -2180,7 +2180,7 @@
     {
       "slug": "nikko",
       "title": "Nikko",
-      "cover": 0,
+      "cover": 6,
       "photos": [
         {
           "file": "IMG_3414.JPG",
@@ -2831,7 +2831,7 @@
     {
       "slug": "tochigi",
       "title": "Tochigi",
-      "cover": 0,
+      "cover": 1,
       "photos": [
         {
           "file": "IMG_3416.JPG",
@@ -3063,7 +3063,8 @@
           "lqip": "data:image/webp;base64,UklGRngAAABXRUJQVlA4IGwAAACwAwCdASoUAA0APtFUo0uoJKMhsAgBABoJZwAAW+IQ36mfbobtYAD+9N6I6JWtqPcSnzpZ6hsXFgBUKVntAYHo/6P7yrv2Vu4kgSe1wCzFqFp9XMT4eacTnq2WFcQAbGi2angIX3/+mv8AAAA=",
           "lqipId": "{\"size\":20,\"webp\":{\"quality\":50,\"effort\":6}}"
         }
-      ]
+      ],
+      "coverPosition": "50% 80%"
     }
   ]
 }

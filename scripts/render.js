@@ -31,19 +31,23 @@ export function blurredPreview(p) {
 
 const srcset = (p, base) => p.sources.map((s) => `${base}${s.src} ${s.w}w`).join(', ');
 
-function img(p, base, { sizes, eager = false, auto = true, cls = '' }) {
+function img(p, base, { sizes, eager = false, auto = true, alt = p.alt, position = '', cls = '' }) {
   const fallback = p.sources.find((s) => s.w >= 960) ?? p.sources.at(-1);
+  // A crop position applies to the photo and to its blurred preview alike.
+  const pos = position ? `;object-position:${esc(position)};background-position:${esc(position)}` : '';
   // Lazy images may use sizes="auto": the browser then uses the real layout width.
   return `<img${cls ? ` class="${cls}"` : ''} src="${base}${fallback.src}" srcset="${srcset(p, base)}" `
-    + `sizes="${eager || !auto ? sizes : `auto, ${sizes}`}" width="${p.width}" height="${p.height}" alt="${esc(p.alt)}" `
-    + `decoding="async" ${eager ? 'fetchpriority="high"' : 'loading="lazy"'} style="background-image:url(&quot;${blurredPreview(p)}&quot;)">`;
+    + `sizes="${eager || !auto ? sizes : `auto, ${sizes}`}" width="${p.width}" height="${p.height}" alt="${esc(alt)}" `
+    + `decoding="async" ${eager ? 'fetchpriority="high"' : 'loading="lazy"'} style="background-image:url(&quot;${blurredPreview(p)}&quot;)${pos}">`;
 }
 
+// Each album link contains its cover (empty alt, decorative) and its name, so the link's
+// accessible name is the album name.
 export function renderHome(manifest, base) {
   const items = manifest.albums.map((a, i) => `
       <li>
         <a class="album-link" href="${base}${a.slug}/" data-warm-srcset="${srcset(a.photos[0], base)}" data-warm-sizes="${photoSizes(a.photos[0])}">
-          <span class="cover">${img(a.photos[a.cover], base, { sizes: COVER_SIZES, eager: i < 2 })}</span>
+          <span class="cover">${img(a.photos[a.cover], base, { sizes: COVER_SIZES, eager: i < 2, alt: '', position: a.coverPosition })}</span>
           <span class="album-name">${esc(a.title)}</span>
         </a>
       </li>`).join('');

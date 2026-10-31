@@ -20,7 +20,7 @@ const WIDTHS = [480, 960, 1200, 1600, 2000, 2400];
 const WEBP = { quality: 82, effort: 5, smartSubsample: true };
 // The largest sizes are mostly seen on high-density screens, where each image pixel
 // is small, so they use a lower quality. This saves about 20% on the largest files.
-const QUALITY_BY_WIDTH = { 1600: 78, 2000: 78, 2400: 78 };
+const LARGE = { width: 1600, quality: 78 };
 // The blurred preview that is inlined in the HTML: 20 px on the long edge.
 const LQIP = { size: 20, webp: { quality: 50, effort: 6 } };
 const LQIP_ID = JSON.stringify(LQIP);
@@ -28,7 +28,7 @@ const SOURCE_EXT = new Set(['.jpg', '.jpeg', '.png', '.tif', '.tiff', '.webp']);
 // The settings for each width are part of that width's filename, so changing them
 // regenerates only the files they apply to. Adding or removing a width only creates
 // or removes the files for that width.
-const webpFor = (w) => ({ ...WEBP, quality: QUALITY_BY_WIDTH[w] ?? WEBP.quality });
+const webpFor = (w) => ({ ...WEBP, quality: w >= LARGE.width ? LARGE.quality : WEBP.quality });
 const settingsId = (webp) => createHash('sha1').update(JSON.stringify({ WEBP: webp, v: 2 })).digest('hex');
 const SETTINGS = settingsId(WEBP);
 
@@ -46,15 +46,25 @@ async function readJSON(file, fallback) {
 // Derivative widths, capped at the original width.
 const widthsFor = (width) => [...new Set(WIDTHS.map((w) => Math.min(w, width)))];
 
-async function processImage({ album, name, input, hash, prev }) {
+// crop (optional): a full-height slice of the photo, as fractions of its width,
+// e.g. { left: 0.36, aspect: 0.5 }. Used for the homepage's portrait composition.
+async function processImage({ album, name, input, hash: sourceHash, prev, crop, suffix = '' }) {
+  const hash = crop ? sha1(sourceHash + JSON.stringify(crop)) : sourceHash;
   const key = sha1(hash + SETTINGS).slice(0, 10);
   const keyFor = (w) => sha1(hash + settingsId(webpFor(w))).slice(0, 10);
-  const base = name.toLowerCase().replace(/\.[^.]+$/, '').replace(/[^a-z0-9_-]+/g, '-');
+  const base = name.toLowerCase().replace(/\.[^.]+$/, '').replace(/[^a-z0-9_-]+/g, '-') + suffix;
   const meta = await sharp(input).metadata();
   // Orientations 5-8 swap width and height.
   const swap = (meta.orientation ?? 1) >= 5;
-  const width = swap ? meta.height : meta.width;
+  let width = swap ? meta.height : meta.width;
   const height = swap ? meta.width : meta.height;
+  let region = null;
+  if (crop) {
+    const w = Math.min(width, Math.round(height * crop.aspect));
+    region = { left: Math.max(0, Math.min(width - w, Math.round(width * crop.left))), top: 0, width: w, height };
+    width = w;
+  }
+  const open = () => { const img = sharp(input).autoOrient(); return region ? img.extract(region) : img; };
 
   const sources = [];
   let created = 0;
@@ -63,8 +73,7 @@ async function processImage({ album, name, input, hash, prev }) {
     const rel = `img/${album}/${base}.${keyFor(w)}-${w}.webp`;
     const file = path.join(ROOT, 'public', rel);
     if (!existsSync(file)) {
-      await sharp(input)
-        .autoOrient()                 // apply EXIF orientation
+      await open()                    // apply EXIF orientation (and the crop, if any)
         .resize({ width: w, height: h, fit: 'fill', kernel: 'lanczos3' })
         .withIccProfile('srgb')       // convert from the embedded profile (e.g. Display P3) and tag as sRGB
         .webp(webpFor(w))
@@ -78,8 +87,7 @@ async function processImage({ album, name, input, hash, prev }) {
   let lqip = prev?.key === key && prev.lqipId === LQIP_ID ? prev.lqip : null;
   if (!lqip) {
     // Converted to sRGB but not tagged: the 480-byte profile would be most of the file.
-    const buf = await sharp(input)
-      .autoOrient()
+    const buf = await open()
       .resize({ width: LQIP.size, height: LQIP.size, fit: 'inside' })
       .webp(LQIP.webp)
       .toBuffer();
@@ -136,7 +144,31 @@ async function run() {
   }
 
   if (!albums.length) throw new Error('No photos found. Add photos to photos/<album>/ and run again.');
-  await Promise.all(albums.map(({ album }) => mkdir(path.join(OUT, album.slug), { recursive: true })));
+
+  // Homepage background (photos/home.json, optional): the photo as it is, for wide screens,
+  // and a portrait crop of it, for phones held upright.
+  const homeInfo = await readJSON(path.join(PHOTOS, 'home.json'), null);
+  let home = null;
+  if (homeInfo) {
+    const input = path.join(PHOTOS, homeInfo.photo);
+    const [slug, file] = homeInfo.photo.split('/');
+    const fromAlbum = albums.find((a) => a.album.slug === slug)?.album.photos.find((p) => p.file === file);
+    if (!existsSync(input)) throw new Error(`photos/home.json: ${homeInfo.photo} not found`);
+    const hash = sha1(await readFile(input));
+    home = { photo: homeInfo.photo, alt: homeInfo.alt ?? '', position: homeInfo.position ?? '50% 50%' };
+    // The wide version is the album photo itself when the photo is in an album.
+    if (fromAlbum) home.wide = fromAlbum;
+    else jobs.push(async () => (home.wide = await processImage({ album: 'home', name: file, input, hash, prev: previous.home?.wide })));
+    if (homeInfo.portrait) {
+      const { left, aspect, position } = homeInfo.portrait;
+      home.portraitPosition = position ?? '50% 50%';
+      jobs.push(async () => (home.portrait = await processImage({
+        album: 'home', name: file, input, hash, prev: previous.home?.portrait, crop: { left, aspect }, suffix: '-portrait',
+      })));
+    }
+  }
+  await Promise.all([...albums.map(({ album }) => album.slug), ...(home ? ['home'] : [])]
+    .map((dir) => mkdir(path.join(OUT, dir), { recursive: true })));
 
   // Process a few images at a time; each one decodes a large scan.
   let next = 0, created = 0, done = 0;
@@ -159,12 +191,18 @@ async function run() {
     album.cover = named >= 0 ? named : Math.max(0, landscape);
     for (const p of album.photos) delete p.created;
   }
-  const manifest = { generated: new Date().toISOString(), albums: albums.map((a) => a.album) };
+  if (home) {
+    const pick = ({ width, height, sources, lqip, key, lqipId }) => ({ width, height, sources, lqip, key, lqipId });
+    home.wide = pick(home.wide);
+    if (home.portrait) home.portrait = pick(home.portrait);
+  }
+  const manifest = { generated: new Date().toISOString(), albums: albums.map((a) => a.album), ...(home ? { home } : {}) };
   await writeFile(MANIFEST, JSON.stringify(manifest, null, 2) + '\n');
 
   // Remove derivatives that no photo uses any more, and folders of albums that are gone.
-  const used = new Set(manifest.albums.flatMap((a) => a.photos.flatMap((p) => p.sources.map((s) => s.src))));
-  const current = new Set(manifest.albums.map((a) => a.slug));
+  const homeImages = home ? [home.wide, home.portrait].filter(Boolean) : [];
+  const used = new Set([...manifest.albums.flatMap((a) => a.photos), ...homeImages].flatMap((p) => p.sources.map((s) => s.src)));
+  const current = new Set([...manifest.albums.map((a) => a.slug), ...(home ? ['home'] : [])]);
   let removed = 0;
   for (const dir of await readdir(OUT, { withFileTypes: true })) {
     if (!dir.isDirectory()) continue;

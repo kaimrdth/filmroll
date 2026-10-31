@@ -1,5 +1,5 @@
 {
-  "generated": "2026-10-31T09:54:39.315Z",
+  "generated": "2026-10-31T12:38:38.565Z",
   "albums": [
     {
       "slug": "hong-kong",
@@ -3065,5 +3065,84 @@
         }
       ]
     }
-  ]
+  ],
+  "home": {
+    "photo": "hong-kong/IMG_3528.JPG",
+    "alt": "A photographer's reflection in a round convex street mirror, Hong Kong",
+    "position": "50% 55%",
+    "wide": {
+      "width": 5444,
+      "height": 3649,
+      "sources": [
+        {
+          "w": 480,
+          "h": 322,
+          "src": "img/hong-kong/img_3528.58b9187803-480.webp"
+        },
+        {
+          "w": 960,
+          "h": 643,
+          "src": "img/hong-kong/img_3528.58b9187803-960.webp"
+        },
+        {
+          "w": 1200,
+          "h": 804,
+          "src": "img/hong-kong/img_3528.58b9187803-1200.webp"
+        },
+        {
+          "w": 1600,
+          "h": 1072,
+          "src": "img/hong-kong/img_3528.11dcf973f0-1600.webp"
+        },
+        {
+          "w": 2000,
+          "h": 1341,
+          "src": "img/hong-kong/img_3528.11dcf973f0-2000.webp"
+        },
+        {
+          "w": 2400,
+          "h": 1609,
+          "src": "img/hong-kong/img_3528.11dcf973f0-2400.webp"
+        }
+      ],
+      "lqip": "data:image/webp;base64,UklGRnYAAABXRUJQVlA4IGoAAAAQBACdASoUAA0APtFUo0uoJKMhsAgBABoJYwCw7CPuCLMnOZNJ2O7EwAD+TDcEsgP8CyYJFlez/8l+pFp8lk136rbPK1BF3iGqYhb5NmAH3xvm+03PjJnsVxLBduPeHfH5qiwSLYkVoAAA",
+      "key": "58b9187803",
+      "lqipId": "{\"size\":20,\"webp\":{\"quality\":50,\"effort\":6}}"
+    },
+    "portraitPosition": "50% 90%",
+    "portrait": {
+      "width": 1825,
+      "height": 3649,
+      "sources": [
+        {
+          "w": 480,
+          "h": 960,
+          "src": "img/home/img_3528-portrait.0c016294e8-480.webp"
+        },
+        {
+          "w": 960,
+          "h": 1919,
+          "src": "img/home/img_3528-portrait.0c016294e8-960.webp"
+        },
+        {
+          "w": 1200,
+          "h": 2399,
+          "src": "img/home/img_3528-portrait.0c016294e8-1200.webp"
+        },
+        {
+          "w": 1600,
+          "h": 3199,
+          "src": "img/home/img_3528-portrait.ccc65eb702-1600.webp"
+        },
+        {
+          "w": 1825,
+          "h": 3649,
+          "src": "img/home/img_3528-portrait.ccc65eb702-1825.webp"
+        }
+      ],
+      "lqip": "data:image/webp;base64,UklGRmgAAABXRUJQVlA4IFwAAACwAwCdASoKABQAPtFUpEuoJKOhsAgBABoJZQCw7B5K4Oq1GSuFoAD78rs+S6RRAIYOYQ0zKoqk0NrNGL5uh5T8vKpI3YWFdynFuLIRn3fO+tnDuvpppKZ9hAAAAA==",
+      "key": "0c016294e8",
+      "lqipId": "{\"size\":20,\"webp\":{\"quality\":50,\"effort\":6}}"
+    }
+  }
 }

@@ -7,8 +7,6 @@ const SITE_NAME = 'kai film roll';
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
 
 // Widths below must match the layout in src/style.css.
-// Covers: one column up to 640px, two columns above, 1440px max container.
-const COVER_SIZES = '(max-width: 640px) calc(100vw - 40px), (max-width: 1400px) 44vw, (max-width: 1552px) calc(50vw - 84px), 692px';
 // Album photos: each photo fills a viewport-height section, scaled to fit (object-fit: contain),
 // so its width is min(viewport width, viewport height x aspect ratio).
 // On desktop screens of 2x density or more, a copy for about 1.3x density is requested
@@ -44,23 +42,50 @@ function img(p, base, { sizes, eager = false, auto = true, alt = p.alt, position
     + `decoding="async" ${eager ? 'fetchpriority="high"' : 'loading="lazy"'} style="background-image:url(&quot;${blurredPreview(p)}&quot;)${pos}">`;
 }
 
-// Each album link contains its cover (empty alt, decorative) and its name, so the link's
-// accessible name is the album name.
+// Homepage background: one photo fills the viewport (object-fit: cover). Screens narrower
+// than 5:8 (phones held upright) get a portrait crop of it, made by scripts/prepare-images.js
+// from photos/home.json. Keep PORTRAIT_MEDIA in step with the media query in src/style.css.
+const PORTRAIT_MEDIA = '(max-aspect-ratio: 5/8)';
+// With object-fit: cover, the image is drawn at max(viewport width, viewport height x aspect
+// ratio). As on album pages, screens of 2x density or more get a copy for about 1.3x density.
+const coverSizes = (p) => {
+  const ar = p.width / p.height;
+  const fill = (k) => `max(${k}vw, ${(k * ar).toFixed(1)}vh)`;
+  return `(min-resolution: 2dppx) ${fill(65)}, ${fill(100)}`;
+};
+
+function background(home, base) {
+  const { wide, portrait } = home;
+  const vars = [
+    `--bg-wide:url(&quot;${blurredPreview(wide)}&quot;)`,
+    `--pos-wide:${esc(home.position)}`,
+    ...(portrait ? [`--bg-portrait:url(&quot;${blurredPreview(portrait)}&quot;)`, `--pos-portrait:${esc(home.portraitPosition)}`] : []),
+  ].join(';');
+  const fallback = wide.sources.find((s) => s.w >= 1600) ?? wide.sources.at(-1);
+  return `
+    <picture class="home-bg">${portrait ? `
+      <source media="${PORTRAIT_MEDIA}" srcset="${srcset(portrait, base)}" sizes="${coverSizes(portrait)}" width="${portrait.width}" height="${portrait.height}">` : ''}
+      <img src="${base}${fallback.src}" srcset="${srcset(wide, base)}" sizes="${coverSizes(wide)}" width="${wide.width}" height="${wide.height}"
+        alt="${esc(home.alt)}" fetchpriority="high" decoding="async" style="${vars}">
+    </picture>`;
+}
+
 export function renderHome(manifest, base) {
-  const items = manifest.albums.map((a, i) => `
-      <li>
-        <a class="album-link" href="${base}${a.slug}/" data-warm-srcset="${srcset(a.photos[0], base)}" data-warm-sizes="${photoSizes(a.photos[0])}">
-          <span class="cover">${img(a.photos[a.cover], base, { sizes: COVER_SIZES, eager: i < 2, alt: '', position: a.coverPosition })}</span>
-          <span class="album-name">${esc(a.title)}</span>
-        </a>
-      </li>`).join('');
+  // Each link warms up its album's first photo on hover or touch (src/main.js).
+  const links = manifest.albums.map((a) => `
+          <li><a class="album-link" href="${base}${a.slug}/" data-warm-srcset="${srcset(a.photos[0], base)}" data-warm-sizes="${photoSizes(a.photos[0])}">${esc(a.title)}</a></li>`).join('');
   return {
     title: SITE_NAME,
+    viewport: '<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">',
     body: `
-  <header class="site-header"><h1 class="wordmark">${SITE_NAME}</h1></header>
-  <main>
-    <ul class="albums">${items}
-    </ul>
+  <main class="home">${manifest.home ? background(manifest.home, base) : ''}
+    <div class="home-nav">
+      <h1 class="wordmark">${SITE_NAME}</h1>
+      <nav aria-label="Albums">
+        <ul class="album-nav">${links}
+        </ul>
+      </nav>
+    </div>
   </main>`,
   };
 }

@@ -27,34 +27,67 @@ img {
   background: var(--placeholder) center / cover no-repeat;
 }
 
-.site-header, main {
+main {
   max-width: calc(1440px + 2 * var(--pad));
   margin: 0 auto;
   padding-inline: var(--pad);
 }
-.site-header { padding-block: var(--pad) calc(var(--pad) * 1.25); }
 main { padding-bottom: calc(var(--pad) * 2.5); }
 
 .wordmark { margin: 0; font-size: 15px; font-weight: 500; letter-spacing: 0.01em; }
 
-/* Homepage */
-.albums {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: var(--pad);
+/* Homepage: one photograph fills the viewport; the name and album links sit in the
+   bottom-left corner. */
+main.home {
+  position: relative;
+  max-width: none;
+  height: 100vh;
+  height: 100dvh; /* the page does not scroll, so this is the visible area */
+  padding: 0;
+  overflow: hidden;
+  background: var(--placeholder);
 }
-@media (max-width: 640px) { .albums { grid-template-columns: 1fr; } }
-
-/* The whole cover is the link; the album name sits on it as a black caption. */
-.album-link { position: relative; display: block; }
-.cover { display: block; aspect-ratio: 3 / 2; overflow: hidden; background: var(--placeholder); }
-.cover img { width: 100%; height: 100%; object-fit: cover; transition: opacity 200ms ease; }
-.album-link:hover .cover img { opacity: 0.92; }
-.album-name {
-  --inset: clamp(12px, 1.25vw, 18px);
+.home-bg img {
   position: absolute;
-  left: var(--inset);
-  bottom: var(--inset);
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  max-width: none;
+  object-fit: cover;
+  object-position: var(--pos-wide);
+  /* The blurred preview, cropped the same way as the photo. */
+  background: var(--bg-wide) var(--pos-wide) / cover no-repeat, var(--placeholder);
+}
+/* Phones held upright get the portrait crop (see PORTRAIT_MEDIA in scripts/render.js),
+   so that the reflection stays the focal point. */
+@media (max-aspect-ratio: 5/8) {
+  .home-bg img {
+    object-position: var(--pos-portrait, var(--pos-wide));
+    background-image: var(--bg-portrait, var(--bg-wide));
+    background-position: var(--pos-portrait, var(--pos-wide));
+  }
+}
+.home-nav {
+  --edge: clamp(16px, 2.5vw, 32px);
+  position: absolute;
+  left: calc(var(--edge) + env(safe-area-inset-left));
+  right: calc(var(--edge) + env(safe-area-inset-right));
+  bottom: calc(var(--edge) + env(safe-area-inset-bottom));
+}
+.home .wordmark {
+  width: fit-content;
+  margin: 0 0 10px;
+  color: #fff;
+  text-shadow: 0 0 8px rgb(0 0 0 / 0.55), 0 1px 2px rgb(0 0 0 / 0.6);
+}
+/* A column keeps the links in the corner: outside the mirror's rim on wide screens, and
+   along the left edge, clear of the reflection, on phones. Very short screens (a phone
+   held sideways) use a row instead. */
+.album-nav { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; }
+@media (max-height: 520px) { .album-nav { flex-direction: row; flex-wrap: wrap; } }
+.album-link {
+  position: relative;
+  display: block;
   padding: 5px 9px 6px;
   background: #000;
   color: #fff;
@@ -62,6 +95,15 @@ main { padding-bottom: calc(var(--pad) * 2.5); }
   font-weight: 400;
   line-height: 1.2;
   letter-spacing: 0.01em;
+  -webkit-tap-highlight-color: transparent;
+}
+.album-link:hover { background: #262626; }
+/* A white ring inside a black one stays visible on any part of the photograph. */
+.album-link:focus-visible { outline: 2px solid #000; outline-offset: 2px; box-shadow: 0 0 0 2px #fff; }
+/* Touch screens: larger targets, with an invisible extension above and below. */
+@media (pointer: coarse) {
+  .album-link { padding: 12px 13px; font-size: 15px; }
+  .album-link::after { content: ""; position: absolute; inset: -3px 0; }
 }
 
 /* Album */

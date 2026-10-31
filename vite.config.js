@@ -5,8 +5,9 @@ import { renderAlbum, renderHome, renderNotFound } from './scripts/render.js';
 const manifestFile = new URL('./src/manifest.json', import.meta.url);
 const loadManifest = () => JSON.parse(readFileSync(manifestFile, 'utf8'));
 
-const fill = (template, { title, body }) =>
-  template.replace('<!--title-->', title).replace('<!--body-->', body);
+const VIEWPORT = '<meta name="viewport" content="width=device-width, initial-scale=1">';
+const fill = (template, { title, body, viewport = VIEWPORT }) =>
+  template.replace('<!--viewport-->', viewport).replace('<!--title-->', title).replace('<!--body-->', body);
 
 // Turns index.html into one static page per album, plus the homepage.
 function filmrollPages() {

@@ -1,6 +1,6 @@
-# filmroll
+# kai film roll
 
-A minimal static site for Kai and Carol's travel film photographs.
+A minimal static site for Kai and Carol's travel film photographs. The site's name is set in `SITE_NAME` in `scripts/render.js`.
 
 Each folder in `photos/` is an album. A build script makes optimized WebP copies of the scans, and Vite writes one static HTML page for the homepage and one for each album.
 

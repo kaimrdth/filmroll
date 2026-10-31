@@ -1,6 +1,9 @@
 // Renders the static HTML for the homepage and each album from src/manifest.json.
 // Used by the Vite plugin in vite.config.js, for both `vite` and `vite build`.
 
+// The site's name, as shown in the wordmark, the back links and the browser tab titles.
+const SITE_NAME = 'kai film roll';
+
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
 
 // Widths below must match the layout in src/style.css.
@@ -52,9 +55,9 @@ export function renderHome(manifest, base) {
         </a>
       </li>`).join('');
   return {
-    title: 'filmroll',
+    title: SITE_NAME,
     body: `
-  <header class="site-header"><h1 class="wordmark">filmroll</h1></header>
+  <header class="site-header"><h1 class="wordmark">${SITE_NAME}</h1></header>
   <main>
     <ul class="albums">${items}
     </ul>
@@ -74,10 +77,10 @@ export function renderAlbum(album, base) {
       </li>`;
   }).join('');
   return {
-    title: `${album.title} · filmroll`,
+    title: `${esc(album.title)} · ${SITE_NAME}`,
     body: `
   <header class="album-header">
-    <a class="back" href="${base}"><span aria-hidden="true">←</span> filmroll</a>
+    <a class="back" href="${base}"><span aria-hidden="true">←</span> ${SITE_NAME}</a>
     <h1 class="album-title">${esc(album.title)}</h1>
   </header>
   <main class="album">
@@ -102,10 +105,10 @@ export function renderAlbum(album, base) {
 
 export function renderNotFound(base) {
   return {
-    title: 'Not found · filmroll',
+    title: `Not found · ${SITE_NAME}`,
     body: `
   <header class="album-header">
-    <a class="back" href="${base}"><span aria-hidden="true">←</span> filmroll</a>
+    <a class="back" href="${base}"><span aria-hidden="true">←</span> ${SITE_NAME}</a>
     <h1 class="album-title">Page not found</h1>
   </header>`,
   };

@@ -6,22 +6,24 @@ const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&
 // Widths below must match the layout in src/style.css.
 // Covers: one column up to 640px, two columns above, 1440px max container.
 const COVER_SIZES = '(max-width: 640px) calc(100vw - 40px), (max-width: 1400px) 44vw, (max-width: 1552px) calc(50vw - 84px), 692px';
-// Album photos: the column is 1280px max and each photo is at most 88% of the viewport height.
-// On desktop screens of 2x density or more, the column requests a copy for about 1.3x density
-// (65% of the layout width), which halves the data of an album scroll. The viewer still loads
-// a copy that is sharp at full density.
+// Album photos: each photo fills a viewport-height section, scaled to fit (object-fit: contain),
+// so its width is min(viewport width, viewport height x aspect ratio).
+// On desktop screens of 2x density or more, a copy for about 1.3x density is requested
+// (65% of the layout width), which halves the data of an album scroll. The viewer still
+// loads a copy that is sharp at full density. Phones (up to 640px wide) are not capped.
 const photoSizes = (p) => {
   const ar = p.width / p.height;
-  return '(max-width: 640px) calc(100vw - 40px), '
-    + `(min-resolution: 2dppx) min(832px, 59.8vw, calc(${(57.2 * ar).toFixed(2)}vh)), `
-    + `min(1280px, 92vw, calc(${(88 * ar).toFixed(2)}vh))`;
+  const fit = (k) => `min(${k}vw, calc(${(k * ar).toFixed(2)}vh))`;
+  return `(max-width: 640px) ${fit(100)}, (min-resolution: 2dppx) ${fit(65)}, ${fit(100)}`;
 };
 
-// The inlined preview, blurred by an SVG filter. The image is drawn larger than the
+// The inlined preview, blurred by an SVG filter. The tiny image is drawn larger than the
 // frame so that the blur does not fade to transparent at the edges.
 export function blurredPreview(p) {
   const h = Math.round((320 * p.height) / p.width);
-  const svg = `<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 320 ${h}' preserveAspectRatio='none'>`
+  // Explicit width and height give the SVG the photo's aspect ratio, so background-size
+  // contain places the preview exactly over the photo's own area.
+  const svg = `<svg xmlns='http://www.w3.org/2000/svg' width='320' height='${h}' viewBox='0 0 320 ${h}'>`
     + `<filter id='b'><feGaussianBlur stdDeviation='11'/></filter>`
     + `<image x='-40' y='-40' width='400' height='${h + 80}' preserveAspectRatio='none' filter='url(#b)' href='${p.lqip}'/></svg>`;
   return `data:image/svg+xml,${svg.replace(/#/g, '%23').replace(/</g, '%3C').replace(/>/g, '%3E')}`;
@@ -62,7 +64,7 @@ export function renderAlbum(album, base) {
     const largest = p.sources.at(-1);
     return `
       <li>
-        <a class="photo" href="${base}${largest.src}" aria-label="Open photo ${i + 1} of ${n}" style="--ar: ${(p.width / p.height).toFixed(4)}">
+        <a class="photo" href="${base}${largest.src}" aria-label="Open photo ${i + 1} of ${n}">
           ${img(p, base, { sizes: photoSizes(p), eager: i === 0, auto: false })}
         </a>
       </li>`;
@@ -70,11 +72,11 @@ export function renderAlbum(album, base) {
   return {
     title: `${album.title} · filmroll`,
     body: `
-  <header class="site-header">
+  <header class="album-header">
     <a class="back" href="${base}"><span aria-hidden="true">←</span> filmroll</a>
     <h1 class="album-title">${esc(album.title)}</h1>
   </header>
-  <main>
+  <main class="album">
     <ol class="photos">${photos}
     </ol>
   </main>
@@ -98,7 +100,7 @@ export function renderNotFound(base) {
   return {
     title: 'Not found · filmroll',
     body: `
-  <header class="site-header">
+  <header class="album-header">
     <a class="back" href="${base}"><span aria-hidden="true">←</span> filmroll</a>
     <h1 class="album-title">Page not found</h1>
   </header>`,

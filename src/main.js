@@ -88,12 +88,23 @@ function initViewer(dialog) {
   links.forEach((link, i) => link.addEventListener('click', (event) => {
     if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return; // let the browser open a new tab
     event.preventDefault();
+    // A <dialog> returns focus to the element that opened it, which would scroll the page
+    // back to the first photo viewed. Removing focus first leaves that to the close handler.
+    link.blur();
     shown = null;
     dialog.showModal();
     show(i);
   }));
 
-  dialog.querySelector('.viewer-close').addEventListener('click', () => dialog.close());
+  // Put the photo that is on screen in the middle of the page while the viewer still covers
+  // the page, so the page does not visibly jump when the viewer closes.
+  const placePage = () => {
+    const link = links[index];
+    const rect = link.getBoundingClientRect();
+    if (Math.abs(rect.top + rect.height / 2 - innerHeight / 2) > 2) link.scrollIntoView({ block: 'center' });
+  };
+  dialog.addEventListener('cancel', placePage); // Escape
+  dialog.querySelector('.viewer-close').addEventListener('click', () => { placePage(); dialog.close(); });
   dialog.querySelector('.viewer-prev').addEventListener('click', () => show(index - 1));
   dialog.querySelector('.viewer-next').addEventListener('click', () => show(index + 1));
 
@@ -107,10 +118,8 @@ function initViewer(dialog) {
   dialog.addEventListener('close', () => {
     view.removeAttribute('src');
     view.style.backgroundImage = '';
-    const link = links[index];
-    const rect = link.getBoundingClientRect();
-    if (rect.bottom < 0 || rect.top > innerHeight) link.scrollIntoView({ block: 'center' });
-    link.focus({ preventScroll: true });
+    placePage();
+    links[index].focus({ preventScroll: true });
   });
 
   // Horizontal swipe on touch screens. Pinch zoom is left alone.

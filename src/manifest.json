@@ -1,5 +1,5 @@
 {
-  "generated": "2026-10-31T09:50:15.266Z",
+  "generated": "2026-10-31T09:54:39.315Z",
   "albums": [
     {
       "slug": "hong-kong",
@@ -3063,8 +3063,7 @@
           "lqip": "data:image/webp;base64,UklGRngAAABXRUJQVlA4IGwAAACwAwCdASoUAA0APtFUo0uoJKMhsAgBABoJZwAAW+IQ36mfbobtYAD+9N6I6JWtqPcSnzpZ6hsXFgBUKVntAYHo/6P7yrv2Vu4kgSe1wCzFqFp9XMT4eacTnq2WFcQAbGi2angIX3/+mv8AAAA=",
           "lqipId": "{\"size\":20,\"webp\":{\"quality\":50,\"effort\":6}}"
         }
-      ],
-      "coverPosition": "50% 10%"
+      ]
     }
   ]
 }

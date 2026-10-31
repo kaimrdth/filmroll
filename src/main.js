@@ -3,6 +3,9 @@ import './style.css';
 const dialog = document.querySelector('.viewer');
 if (dialog) initViewer(dialog);
 
+const photoList = document.querySelector('.photos');
+if (photoList && matchMedia('(pointer: coarse)').matches) initTouchSettle(photoList);
+
 // Homepage: when a pointer rests on an album (or a finger touches it), start loading
 // that album's first photo, so it is ready when the album page opens.
 for (const link of document.querySelectorAll('[data-warm-srcset]')) {
@@ -141,4 +144,56 @@ function initViewer(dialog) {
     clearTimeout(resizeTimer);
     resizeTimer = setTimeout(() => { if (dialog.open) show(index); }, 150);
   });
+}
+
+// Touch screens: native scrolling handles each swipe, momentum included. When the scrolling
+// stops, the page glides to the nearest photo, centered. A short swipe that stopped before it
+// reached the next photo moves on to that photo, so a small flick is enough to advance.
+// (Native proximity snapping would return to the same photo after a short swipe.)
+function initTouchSettle(list) {
+  const root = document.documentElement;
+  const items = [...list.children];
+  const NUDGE = 24; // px of scrolling that counts as an intent to move on
+  let gesture = null;
+  let touching = false;
+  let timer;
+  root.classList.add('touch-settle');
+
+  // Scroll positions where the page can rest: the top of the page, and each photo centered.
+  const stops = () => {
+    const max = root.scrollHeight - innerHeight;
+    const centers = items.map((li) => {
+      const r = li.getBoundingClientRect();
+      return Math.round(Math.min(max, Math.max(0, scrollY + r.top + r.height / 2 - innerHeight / 2)));
+    });
+    return [...new Set([0, ...centers])];
+  };
+  const nearest = (list, y) => list.reduce((best, s, i) => (Math.abs(s - y) < Math.abs(list[best] - y) ? i : best), 0);
+
+  function settle() {
+    clearTimeout(timer);
+    if (touching || !gesture || dialogOpen()) return;
+    const list = stops();
+    const y = scrollY;
+    const moved = y - gesture.y;
+    const from = gesture.from;
+    gesture = null;
+    if (Math.abs(moved) < 3) return; // a tap, not a swipe
+    let to = nearest(list, y);
+    if (to === from && Math.abs(moved) >= NUDGE) to = Math.min(list.length - 1, Math.max(0, to + Math.sign(moved)));
+    if (Math.abs(list[to] - y) > 1) scrollTo({ top: list[to], behavior: 'smooth' });
+  }
+  const dialogOpen = () => !!document.querySelector('.viewer[open]');
+  const later = () => { clearTimeout(timer); timer = setTimeout(settle, 150); };
+
+  addEventListener('touchstart', () => {
+    touching = true;
+    clearTimeout(timer);
+    gesture = { y: scrollY, from: nearest(stops(), scrollY) };
+  }, { passive: true });
+  addEventListener('touchend', () => { touching = false; later(); }, { passive: true });
+  addEventListener('touchcancel', () => { touching = false; later(); }, { passive: true });
+  // Momentum keeps firing scroll events; settle once they stop. 'scrollend' is sooner where supported.
+  addEventListener('scroll', () => { if (gesture && !touching) later(); }, { passive: true });
+  addEventListener('scrollend', () => { if (!touching) settle(); });
 }

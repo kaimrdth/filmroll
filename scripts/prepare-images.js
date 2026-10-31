@@ -14,12 +14,13 @@ const PHOTOS = path.join(ROOT, 'photos');
 const OUT = path.join(ROOT, 'public', 'img'); // copied into dist/ by Vite
 const MANIFEST = path.join(ROOT, 'src', 'manifest.json');
 
-// 1200 suits phones (about 1050 px needed at 3x) and portrait photos on 2x laptops.
-const WIDTHS = [480, 960, 1200, 1600, 2400];
+// 1200 suits phones (about 1050 px needed at 3x). 2000 suits full-height landscape photos
+// on 2x laptops, which need 1600 to 2000 px.
+const WIDTHS = [480, 960, 1200, 1600, 2000, 2400];
 const WEBP = { quality: 82, effort: 5, smartSubsample: true };
-// The two largest sizes are mostly seen on high-density screens, where each image pixel
+// The largest sizes are mostly seen on high-density screens, where each image pixel
 // is small, so they use a lower quality. This saves about 20% on the largest files.
-const QUALITY_BY_WIDTH = { 1600: 78, 2400: 78 };
+const QUALITY_BY_WIDTH = { 1600: 78, 2000: 78, 2400: 78 };
 // The blurred preview that is inlined in the HTML: 20 px on the long edge.
 const LQIP = { size: 20, webp: { quality: 50, effort: 6 } };
 const LQIP_ID = JSON.stringify(LQIP);

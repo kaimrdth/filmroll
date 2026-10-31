@@ -14,11 +14,16 @@ const PHOTOS = path.join(ROOT, 'photos');
 const OUT = path.join(ROOT, 'public', 'img'); // copied into dist/ by Vite
 const MANIFEST = path.join(ROOT, 'src', 'manifest.json');
 
-const WIDTHS = [480, 960, 1600, 2400];
+// 1200 suits phones (about 1050 px needed at 3x) and portrait photos on 2x laptops.
+const WIDTHS = [480, 960, 1200, 1600, 2400];
 const WEBP = { quality: 82, effort: 5, smartSubsample: true };
+// The blurred preview that is inlined in the HTML: 20 px on the long edge.
+const LQIP = { size: 20, webp: { quality: 50, effort: 6 } };
+const LQIP_ID = JSON.stringify(LQIP);
 const SOURCE_EXT = new Set(['.jpg', '.jpeg', '.png', '.tif', '.tiff', '.webp']);
-// Part of every derivative name, so changing the settings regenerates everything.
-const SETTINGS = createHash('sha1').update(JSON.stringify({ WIDTHS, WEBP, v: 1 })).digest('hex');
+// Part of every derivative name, so changing the encoding settings regenerates everything.
+// Adding or removing a width only creates or removes the files for that width.
+const SETTINGS = createHash('sha1').update(JSON.stringify({ WEBP, v: 2 })).digest('hex');
 
 const naturalSort = (a, b) => a.localeCompare(b, 'en', { numeric: true, sensitivity: 'base' });
 const titleFromSlug = (slug) => slug.split(/[-_ ]+/).map((w) => w[0].toUpperCase() + w.slice(1)).join(' ');
@@ -34,7 +39,7 @@ async function readJSON(file, fallback) {
 // Derivative widths, capped at the original width.
 const widthsFor = (width) => [...new Set(WIDTHS.map((w) => Math.min(w, width)))];
 
-async function processImage({ album, name, input, hash }) {
+async function processImage({ album, name, input, hash, prev }) {
   const key = sha1(hash + SETTINGS).slice(0, 10);
   const base = name.toLowerCase().replace(/\.[^.]+$/, '').replace(/[^a-z0-9_-]+/g, '-');
   const meta = await sharp(input).metadata();
@@ -60,14 +65,26 @@ async function processImage({ album, name, input, hash }) {
     }
     sources.push({ w, h, src: rel });
   }
-  return { width, height, sources, created };
+
+  // A tiny preview, shown blurred while the real image loads. Reused while the source is unchanged.
+  let lqip = prev?.key === key && prev.lqipId === LQIP_ID ? prev.lqip : null;
+  if (!lqip) {
+    // Converted to sRGB but not tagged: the 480-byte profile would be most of the file.
+    const buf = await sharp(input)
+      .autoOrient()
+      .resize({ width: LQIP.size, height: LQIP.size, fit: 'inside' })
+      .webp(LQIP.webp)
+      .toBuffer();
+    lqip = `data:image/webp;base64,${buf.toString('base64')}`;
+  }
+  return { key, width, height, sources, lqip, lqipId: LQIP_ID, created };
 }
 
 async function run() {
   const started = Date.now();
   const meta = await readJSON(path.join(PHOTOS, 'albums.json'), {});
   const previous = await readJSON(MANIFEST, { albums: [] });
-  const known = new Map(previous.albums.flatMap((a) => a.photos.map((p) => [`${a.slug}/${p.file}`, p.source])));
+  const known = new Map(previous.albums.flatMap((a) => a.photos.map((p) => [`${a.slug}/${p.file}`, p])));
 
   const dirs = (await readdir(PHOTOS, { withFileTypes: true }))
     .filter((d) => d.isDirectory() && !d.name.startsWith('.')).map((d) => d.name);
@@ -92,10 +109,11 @@ async function run() {
       const input = path.join(PHOTOS, slug, file);
       const { size, mtimeMs } = await stat(input);
       const prev = known.get(`${slug}/${file}`);
+      const seen = prev?.source;
       // Hash only files whose size or modification time changed.
-      const hash = prev && prev.size === size && prev.mtimeMs === mtimeMs
-        ? prev.hash : sha1(await readFile(input));
-      return { name: file, input, hash, source: { size, mtimeMs, hash } };
+      const hash = seen && seen.size === size && seen.mtimeMs === mtimeMs
+        ? seen.hash : sha1(await readFile(input));
+      return { name: file, input, hash, prev, source: { size, mtimeMs, hash } };
     }));
 
     const album = { slug, title, cover: 0, photos: [] };

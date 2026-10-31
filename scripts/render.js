@@ -9,19 +9,30 @@ const COVER_SIZES = '(max-width: 640px) calc(100vw - 40px), (max-width: 1400px) 
 // Album photos: the column is 1280px max and each photo is at most 88% of the viewport height.
 const photoSizes = (p) => `(max-width: 640px) calc(100vw - 40px), min(1280px, 92vw, calc(88vh * ${(p.width / p.height).toFixed(3)}))`;
 
+// The inlined preview, blurred by an SVG filter. The image is drawn larger than the
+// frame so that the blur does not fade to transparent at the edges.
+export function blurredPreview(p) {
+  const h = Math.round((320 * p.height) / p.width);
+  const svg = `<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 320 ${h}' preserveAspectRatio='none'>`
+    + `<filter id='b'><feGaussianBlur stdDeviation='11'/></filter>`
+    + `<image x='-40' y='-40' width='400' height='${h + 80}' preserveAspectRatio='none' filter='url(#b)' href='${p.lqip}'/></svg>`;
+  return `data:image/svg+xml,${svg.replace(/#/g, '%23').replace(/</g, '%3C').replace(/>/g, '%3E')}`;
+}
+
+const srcset = (p, base) => p.sources.map((s) => `${base}${s.src} ${s.w}w`).join(', ');
+
 function img(p, base, { sizes, eager = false, cls = '' }) {
-  const srcset = p.sources.map((s) => `${base}${s.src} ${s.w}w`).join(', ');
   const fallback = p.sources.find((s) => s.w >= 960) ?? p.sources.at(-1);
   // Lazy images may use sizes="auto": the browser then uses the real layout width.
-  return `<img${cls ? ` class="${cls}"` : ''} src="${base}${fallback.src}" srcset="${srcset}" `
+  return `<img${cls ? ` class="${cls}"` : ''} src="${base}${fallback.src}" srcset="${srcset(p, base)}" `
     + `sizes="${eager ? sizes : `auto, ${sizes}`}" width="${p.width}" height="${p.height}" alt="${esc(p.alt)}" `
-    + `decoding="async" ${eager ? 'fetchpriority="high"' : 'loading="lazy"'}>`;
+    + `decoding="async" ${eager ? 'fetchpriority="high"' : 'loading="lazy"'} style="background-image:url(&quot;${blurredPreview(p)}&quot;)">`;
 }
 
 export function renderHome(manifest, base) {
   const items = manifest.albums.map((a, i) => `
       <li>
-        <a class="album-link" href="${base}${a.slug}/">
+        <a class="album-link" href="${base}${a.slug}/" data-warm-srcset="${srcset(a.photos[0], base)}" data-warm-sizes="${photoSizes(a.photos[0])}">
           <span class="cover">${img(a.photos[a.cover], base, { sizes: COVER_SIZES, eager: i < 2 })}</span>
           <span class="album-name">${esc(a.title)}</span>
         </a>

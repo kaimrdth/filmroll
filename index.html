@@ -10,8 +10,8 @@
   <!-- Chromium browsers: fetch album pages early, and fully render a page when a pointer rests on its link. -->
   <script type="speculationrules">
     {
-      "prefetch": [{ "where": { "selector_matches": ".album-link" }, "eagerness": "eager" }],
-      "prerender": [{ "where": { "and": [{ "href_matches": "/*" }, { "not": { "selector_matches": ".photo" } }] }, "eagerness": "moderate" }]
+      "prefetch": [{ "where": { "selector_matches": "[data-warm-srcset]" }, "eagerness": "eager" }],
+      "prerender": [{ "where": { "href_matches": "/*" }, "eagerness": "moderate" }]
     }
   </script>
 </head>

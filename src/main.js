@@ -1,13 +1,43 @@
 import './style.css';
 
+// Touch screens: tap a photo to open the viewer, swipe in it, and each scroll settles on a
+// photo. Desktop: no viewer (photos already fit the screen); Space and Shift+Space move
+// one photo forward and back.
+const touch = matchMedia('(pointer: coarse)').matches;
 const dialog = document.querySelector('.viewer');
-if (dialog) initViewer(dialog);
-
 const photoList = document.querySelector('.photos');
-if (photoList && matchMedia('(pointer: coarse)').matches) initTouchSettle(photoList);
 
-// Homepage: when a pointer rests on an album (or a finger touches it), start loading
-// that album's first photo, so it is ready when the album page opens.
+// Album pages have a bar at the top; photos are centered in the space below it.
+const centerLine = () => {
+  const bar = document.querySelector('.album-bar')?.offsetHeight ?? 0;
+  return bar + (innerHeight - bar) / 2;
+};
+const offCenter = (el) => { const r = el.getBoundingClientRect(); return r.top + r.height / 2 - centerLine(); };
+const motion = () => (matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth');
+
+// Very narrow screens: the album links scroll sideways; bring the current one into view.
+const barNav = document.querySelector('.bar-nav');
+const here = barNav?.querySelector('[aria-current="page"]');
+if (barNav && barNav.scrollWidth > barNav.clientWidth) {
+  if (here) {
+    const n = barNav.getBoundingClientRect();
+    const h = here.getBoundingClientRect();
+    barNav.scrollLeft += h.left + h.width / 2 - (n.left + n.width / 2);
+  }
+  const edges = () => {
+    barNav.classList.toggle('more-left', barNav.scrollLeft > 1);
+    barNav.classList.toggle('more-right', barNav.scrollLeft + barNav.clientWidth < barNav.scrollWidth - 1);
+  };
+  edges();
+  barNav.addEventListener('scroll', edges, { passive: true });
+}
+
+if (dialog && touch) initViewer(dialog);
+if (photoList && touch) initTouchSettle(photoList);
+if (photoList && !touch) initSpaceKeys(photoList);
+
+// Album links (homepage and album bar): when a pointer rests on one (or a finger touches
+// it), start loading that album's first photo, so it is ready when the album page opens.
 for (const link of document.querySelectorAll('[data-warm-srcset]')) {
   const warm = () => {
     const img = new Image();
@@ -29,7 +59,8 @@ function initViewer(dialog) {
       const [url, w] = entry.trim().split(/\s+/);
       return { url: new URL(url, location.href).href, w: parseInt(w, 10) };
     });
-    return { img, sources, ratio: img.width / img.height };
+    // The photo's own shape (the img box is the whole section, so img.width would not do).
+    return { img, sources, ratio: img.getAttribute('width') / img.getAttribute('height') };
   });
   const ready = new Set();   // URLs that are downloaded and decoded
   const pending = new Map(); // URL -> load promise
@@ -88,23 +119,28 @@ function initViewer(dialog) {
       .finally(prefetchNeighbors);
   }
 
-  links.forEach((link, i) => link.addEventListener('click', (event) => {
-    if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return; // let the browser open a new tab
-    event.preventDefault();
+  const open = (i) => {
     // A <dialog> returns focus to the element that opened it, which would scroll the page
     // back to the first photo viewed. Removing focus first leaves that to the close handler.
-    link.blur();
+    links[i].blur();
     shown = null;
     dialog.showModal();
     show(i);
-  }));
+  };
+  links.forEach((link, i) => {
+    link.setAttribute('role', 'button');
+    link.tabIndex = 0;
+    link.setAttribute('aria-label', `Open photo ${i + 1} of ${links.length}`);
+    link.addEventListener('click', () => open(i));
+    link.addEventListener('keydown', (event) => {
+      if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); open(i); }
+    });
+  });
 
   // Put the photo that is on screen in the middle of the page while the viewer still covers
   // the page, so the page does not visibly jump when the viewer closes.
   const placePage = () => {
-    const link = links[index];
-    const rect = link.getBoundingClientRect();
-    if (Math.abs(rect.top + rect.height / 2 - innerHeight / 2) > 2) link.scrollIntoView({ block: 'center' });
+    if (Math.abs(offCenter(links[index])) > 2) links[index].scrollIntoView({ block: 'center' });
   };
   dialog.addEventListener('cancel', placePage); // Escape
   dialog.querySelector('.viewer-close').addEventListener('click', () => { placePage(); dialog.close(); });
@@ -164,7 +200,7 @@ function initTouchSettle(list) {
     const max = root.scrollHeight - innerHeight;
     const centers = items.map((li) => {
       const r = li.getBoundingClientRect();
-      return Math.round(Math.min(max, Math.max(0, scrollY + r.top + r.height / 2 - innerHeight / 2)));
+      return Math.round(Math.min(max, Math.max(0, scrollY + r.top + r.height / 2 - centerLine())));
     });
     return [...new Set([0, ...centers])];
   };
@@ -181,7 +217,7 @@ function initTouchSettle(list) {
     if (Math.abs(moved) < 3) return; // a tap, not a swipe
     let to = nearest(list, y);
     if (to === from && Math.abs(moved) >= NUDGE) to = Math.min(list.length - 1, Math.max(0, to + Math.sign(moved)));
-    if (Math.abs(list[to] - y) > 1) scrollTo({ top: list[to], behavior: 'smooth' });
+    if (Math.abs(list[to] - y) > 1) scrollTo({ top: list[to], behavior: motion() });
   }
   const dialogOpen = () => !!document.querySelector('.viewer[open]');
   const later = () => { clearTimeout(timer); timer = setTimeout(settle, 150); };
@@ -196,4 +232,38 @@ function initTouchSettle(list) {
   // Momentum keeps firing scroll events; settle once they stop. 'scrollend' is sooner where supported.
   addEventListener('scroll', () => { if (gesture && !touching) later(); }, { passive: true });
   addEventListener('scrollend', () => { if (!touching) settle(); });
+}
+
+// Desktop: Space moves to the next photo and Shift+Space to the previous one, each centered
+// below the bar. (The browser's own Space scrolls by a screenful, which on shorter sections
+// can skip photos.) A quiet hint in the bar shows the keys until they are used.
+function initSpaceKeys(list) {
+  const items = [...list.children];
+  const hint = document.querySelector('.key-hint');
+  const KEY = 'filmroll-space-hint';
+  let learned = false;
+  try { learned = localStorage.getItem(KEY) === 'learned'; } catch {}
+
+  const hide = () => hint?.classList.remove('show');
+  if (hint && !learned) {
+    hint.hidden = false;
+    setTimeout(() => hint.classList.add('show'), 600);
+    setTimeout(hide, 8000);
+    addEventListener('wheel', hide, { once: true, passive: true });
+  }
+
+  addEventListener('keydown', (event) => {
+    if (event.key !== ' ' || event.altKey || event.ctrlKey || event.metaKey || event.defaultPrevented) return;
+    if (event.target.closest?.('button, input, textarea, select, [contenteditable], dialog')) return;
+    event.preventDefault();
+    const back = event.shiftKey;
+    const offsets = items.map(offCenter);
+    const to = back
+      ? items.findLast((_, i) => offsets[i] < -2)
+      : items.find((_, i) => offsets[i] > 2);
+    if (to) to.scrollIntoView({ block: 'center', behavior: motion() });
+    else if (back) scrollTo({ top: 0, behavior: motion() });
+    hide();
+    try { localStorage.setItem(KEY, 'learned'); } catch {}
+  });
 }

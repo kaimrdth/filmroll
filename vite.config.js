@@ -27,7 +27,7 @@ function filmrollPages() {
         if (slug && !album) return next();
         if (slug && !url.pathname.endsWith('/')) { res.writeHead(301, { Location: `${url.pathname}/` }); return res.end(); }
         const template = readFileSync(new URL('./index.html', import.meta.url), 'utf8');
-        const page = album ? renderAlbum(album, base) : renderHome(manifest, base);
+        const page = album ? renderAlbum(album, base, manifest) : renderHome(manifest, base);
         res.setHeader('Content-Type', 'text/html');
         res.end(await server.transformIndexHtml(req.url, fill(template, page)));
       });
@@ -44,10 +44,10 @@ function filmrollPages() {
       const manifest = loadManifest();
       bundle['index.html'].source = fill(template, renderHome(manifest, base));
       for (const album of manifest.albums) {
-        this.emitFile({ type: 'asset', fileName: `${album.slug}/index.html`, source: fill(template, renderAlbum(album, base)) });
+        this.emitFile({ type: 'asset', fileName: `${album.slug}/index.html`, source: fill(template, renderAlbum(album, base, manifest)) });
       }
       // Netlify and most static hosts serve 404.html for unknown URLs.
-      this.emitFile({ type: 'asset', fileName: '404.html', source: fill(template, renderNotFound(base)) });
+      this.emitFile({ type: 'asset', fileName: '404.html', source: fill(template, renderNotFound(base, manifest)) });
     },
   };
 }

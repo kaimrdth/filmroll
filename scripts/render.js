@@ -7,14 +7,16 @@ const SITE_NAME = 'kai film roll';
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
 
 // Widths below must match the layout in src/style.css.
-// Album photos: each photo fills a viewport-height section, scaled to fit (object-fit: contain),
-// so its width is min(viewport width, viewport height x aspect ratio).
+// Album pages have a bar at the top (BAR_HEIGHT, --bar in src/style.css). Each photo fills
+// the viewport below it, scaled to fit (object-fit: contain), so its width is
+// min(viewport width, (viewport height - bar) x aspect ratio).
 // On desktop screens of 2x density or more, a copy for about 1.3x density is requested
-// (65% of the layout width), which halves the data of an album scroll. The viewer still
-// loads a copy that is sharp at full density. Phones (up to 640px wide) are not capped.
+// (65% of the layout width), which halves the data of an album scroll. Phones (up to
+// 640px wide) are not capped.
+const BAR_HEIGHT = 44;
 const photoSizes = (p) => {
   const ar = p.width / p.height;
-  const fit = (k) => `min(${k}vw, calc(${(k * ar).toFixed(2)}vh))`;
+  const fit = (k) => `min(${k}vw, calc((100vh - ${BAR_HEIGHT}px) * ${((k / 100) * ar).toFixed(4)}))`;
   return `(max-width: 640px) ${fit(100)}, (min-resolution: 2dppx) ${fit(65)}, ${fit(100)}`;
 };
 
@@ -90,25 +92,38 @@ export function renderHome(manifest, base) {
   };
 }
 
-export function renderAlbum(album, base) {
-  const n = album.photos.length;
-  const photos = album.photos.map((p, i) => {
-    const largest = p.sources.at(-1);
+// The bar at the top of album pages: the site name (a link home) and every album, with the
+// current one marked. The Space-key hint is shown by src/main.js on desktop only.
+function albumBar(manifest, base, current = '') {
+  const links = manifest.albums.map((a) => {
+    const here = a.slug === current;
+    const warm = here ? '' : ` data-warm-srcset="${srcset(a.photos[0], base)}" data-warm-sizes="${photoSizes(a.photos[0])}"`;
     return `
-      <li style="--ar: ${(p.width / p.height).toFixed(4)}">
-        <a class="photo" href="${base}${largest.src}" aria-label="Open photo ${i + 1} of ${n}">
-          ${img(p, base, { sizes: photoSizes(p), eager: i === 0, auto: false })}
-        </a>
-      </li>`;
+        <li><a class="bar-link" href="${base}${a.slug}/"${here ? ' aria-current="page"' : ''}${warm}><span>${esc(a.title)}</span></a></li>`;
   }).join('');
+  return `
+  <header class="album-bar">
+    <a class="bar-home" href="${base}">${SITE_NAME}</a>
+    <nav class="bar-nav" aria-label="Albums">
+      <ul>${links}
+      </ul>
+    </nav>
+    <p class="key-hint" hidden><kbd>Space</kbd> next <span aria-hidden="true">&middot;</span> <kbd>Shift</kbd> <kbd>Space</kbd> back</p>
+  </header>`;
+}
+
+export function renderAlbum(album, base, manifest) {
+  const photos = album.photos.map((p, i) => `
+      <li style="--ar: ${(p.width / p.height).toFixed(4)}">
+        <div class="photo">
+          ${img(p, base, { sizes: photoSizes(p), eager: i === 0, auto: false })}
+        </div>
+      </li>`).join('');
   return {
     title: `${esc(album.title)} · ${SITE_NAME}`,
-    body: `
-  <header class="album-header">
-    <a class="back" href="${base}"><span aria-hidden="true">←</span> ${SITE_NAME}</a>
-    <h1 class="album-title">${esc(album.title)}</h1>
-  </header>
+    body: `${albumBar(manifest, base, album.slug)}
   <main class="album">
+    <h1 class="visually-hidden">${esc(album.title)}</h1>
     <ol class="photos">${photos}
     </ol>
   </main>
@@ -128,13 +143,12 @@ export function renderAlbum(album, base) {
   };
 }
 
-export function renderNotFound(base) {
+export function renderNotFound(base, manifest) {
   return {
     title: `Not found · ${SITE_NAME}`,
-    body: `
-  <header class="album-header">
-    <a class="back" href="${base}"><span aria-hidden="true">←</span> ${SITE_NAME}</a>
-    <h1 class="album-title">Page not found</h1>
-  </header>`,
+    body: `${albumBar(manifest, base)}
+  <main class="notfound">
+    <h1>Page not found</h1>
+  </main>`,
   };
 }
